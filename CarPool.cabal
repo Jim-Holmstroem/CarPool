@@ -1,0 +1,56 @@
+name:                CarPool
+version:             0.1.0.0
+synopsis:            Web application to log car pool usage and gasoline money
+description:         Please see README.md
+homepage:            https://github.com/githubuser/CarPool#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Jim Holmstrom
+maintainer:          jim.holmstroem@gmail.com
+copyright:           2016 Jim Holmstrom
+category:            Web
+build-type:          Simple
+-- extra-source-files:
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Lib
+  build-depends:       base >= 4.7 && < 5
+  default-language:    Haskell2010
+
+executable CarPool
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , transformers >= 0.4.2 && < 0.4.3
+                     , bytestring >= 0.10 && < 0.11
+                     , split >= 0.2.3 && < 0.2.4
+                     , text >= 1.2.2 && < 1.2.3
+                     , lens >= 4.13 && < 4.14
+                     , time >= 1.5 && < 1.6
+                     , iso8601-time >= 0.1 && < 0.2
+                     , random >= 1.1 && < 1.2
+                     , uuid >= 1.3 && < 1.4
+                     , aeson >= 0.11 && < 0.12
+                     , blaze-html >= 0.8.1 && < 0.8.2
+                     , blaze-markup >= 0.7.0 && < 0.7.1
+                     , hedis >= 0.6 && < 0.7
+                     , snap >= 0.14 && < 0.15
+                     , snap-core >= 0.9.8 && < 0.9.9
+                     , CarPool
+  default-language:    Haskell2010
+
+test-suite CarPool-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , CarPool
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/githubuser/CarPool
