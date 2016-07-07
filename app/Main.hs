@@ -18,6 +18,7 @@ import           Data.ByteString.Char8 (ByteString(..))
 import qualified Data.ByteString.Char8 as BSC8
 import qualified Data.ByteString.Lazy.Char8 as BSLC8
 
+import           Text.Read
 import           Data.Text (Text(..))
 import qualified Data.Text as Text
 import           Data.Text.Encoding (encodeUtf8, decodeUtf8)
@@ -110,11 +111,53 @@ confirm conn = do
                                , "SEK"
                                ]
         H.hr
-        H.form ! A.method "GET" ! A.action (H.stringValue $ "/confirm/" ++ BSC8.unpack poolId) $ do
+        H.form ! A.method "GET" ! A.action (H.stringValue $ "/submit/" ++ BSC8.unpack poolId) $ do
             submitInput
 
-success conn = return ()
 
+data Trip = Trip { uuid      :: UUID
+                 , timestamp :: UTCTime
+                 , user      :: BSC8.ByteString
+                 , use       :: Double
+                 , cost      :: Double
+                 }
+    deriving (Read, Show, Eq, Generic)
+
+
+mkTrip :: BSC8.ByteString -> Double -> Double -> IO Trip
+mkTrip user use cost = Trip <$> randomIO <*> getCurrentTime <*> return user <*> return use <*> return cost
+
+
+submit :: Connection -> Snap ()
+submit conn = do
+    Just poolId <- getParam "poolId"
+
+    Just useRaw <- getQueryParam "use"
+    Just costRaw <- getQueryParam "cost"
+
+    let useTotal = read . BSC8.unpack $ useRaw
+    let costTotal = read . BSC8.unpack $ costRaw
+
+    usersRaw <- getQueryParam "user"
+    let users = maybe [] splitOnSpace $ usersRaw 
+
+    response <- liftIO $ do
+        trip <- mkTrip (head users) useTotal costTotal  -- FIXME split trips
+        runRedis conn $ multiExec $ do
+            lpush (BSC8.append "trips:"  poolId) [Data.UUID.toASCIIBytes . uuid $ trip]
+            hmset (BSC8.concat [ "trip:", poolId, ":", Data.UUID.toASCIIBytes . uuid $ trip]) [ ("timestamp", BSC8.pack . formatISO8601 $ timestamp trip)
+                                                                                              , ("user", user trip)
+                                                                                              , ("use", BSC8.pack . show . use $ trip)
+                                                                                              , ("cost", BSC8.pack . show . cost $ trip)
+                                                                                              ]
+
+    writeHtmlBody $ do
+        H.h1 $ H.toHtml ("Success" :: Text)
+        H.hr
+
+        H.form ! A.method "GET" ! A.action (H.stringValue $ "/pools/" ++ BSC8.unpack poolId) $ do
+            hiddenUsersInput users
+            submitInput
 
 poolUsers :: Connection -> ByteString -> Snap ()
 poolUsers conn poolId = do
@@ -158,7 +201,7 @@ root :: Connection -> Snap ()
 root conn =
     route [ ("pools/:poolId", method GET $ pool conn)
           , ("confirm/:poolId", method GET $ confirm conn)
-          , ("success/:poolId", method GET $ success conn)
+          , ("submit/:poolId", method GET $ submit conn)
           ]
 
 
